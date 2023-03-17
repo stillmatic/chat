@@ -1,5 +1,7 @@
 # Incredibly simple GPT CLI
 
+[![asciicast](https://asciinema.org/a/VMw7ccnlLEnZU7uCMojeiF76r.svg)](https://asciinema.org/a/VMw7ccnlLEnZU7uCMojeiF76r)
+
 sometimes you want to talk to ChatGPT and the web interface is down or it's just far away. This is a simple CLI for that.
 
 Requires `OPENAI_KEY` env var to be set to your OpenAI API key.
