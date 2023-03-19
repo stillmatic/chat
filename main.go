@@ -14,8 +14,8 @@ import (
 )
 
 type GPTCmd struct {
-	Client   gpt3.Client                         `arg:"" help:"GPT-3 client"`
-	Messages []gpt3.ChatCompletionRequestMessage `arg:"" help:"Accumulated messages"`
+	Client   gpt3.Client                        
+	Messages []gpt3.ChatCompletionRequestMessage 
 }
 
 //go:embed prompt.txt
@@ -27,11 +27,12 @@ const (
 	roleAssistant = "assistant"
 )
 
+var assistantPrinter = color.New(color.FgYellow)
+
 // onData handles the streaming output
 // here, we are simply printing the output to the console
 func onData(res *gpt3.ChatCompletionStreamResponse) {
-	printer := color.New(color.FgYellow)
-	printer.Print(res.Choices[0].Delta.Content)
+	assistantPrinter.Print(res.Choices[0].Delta.Content)
 }
 
 func (c *GPTCmd) Run(ctx context.Context) error {

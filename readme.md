@@ -36,17 +36,17 @@ chat What's the abilty of sharks to sense their prey's electric fields called?
 
 If you already have [go](https://go.dev/) installed:
 ```bash
-go install github.com/stillmatic/gpt-cli@latest
+go install github.com/stillmatic/chat@latest
 ```
 ### Binary
-You can download binary artifacts from the [releases page](https://github.com/stillmatic/gpt-cli/releases) directly. Make sure to move the files to your path.
+You can download binary artifacts from the [releases page](https://github.com/stillmatic/chat/releases) directly. Make sure to move the files to your path.
 
 ### From scratch
 
 ```bash
-git clone https://github.com/stillmatic/gpt-cli.git
+git clone https://github.com/stillmatic/chat.git
 cd gpt-cli
-go build -o chat
+go build .
 mv chat /usr/local/bin/
 ```
 

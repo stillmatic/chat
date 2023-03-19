@@ -1,4 +1,4 @@
-module github.com/stillmatic/gpt-cli
+module github.com/stillmatic/chat
 
 go 1.19
 
