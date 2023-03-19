@@ -23,6 +23,6 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
-        pre_commnad: export CGO_ENABLED=0 && export GODEBUG=http2client=0
+        pre_command: export CGO_ENABLED=0 && export GODEBUG=http2client=0
         binary_name: "chat"
         extra_files: LICENSE readme.md
