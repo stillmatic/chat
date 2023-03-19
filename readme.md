@@ -1,6 +1,6 @@
 # `chat`: a CLI tool for ChatGPT
 
-[![asciicast](https://asciinema.org/a/VMw7ccnlLEnZU7uCMojeiF76r.svg)](https://asciinema.org/a/VMw7ccnlLEnZU7uCMojeiF76r)
+[![asciicast](https://asciinema.org/a/hhhibsaGweztuB14IPPzG2SXL.svg)](https://asciinema.org/a/hhhibsaGweztuB14IPPzG2SXL)
 
 `chat` is a lightweight command-line interface (CLI) tool designed to streamline interaction with OpenAI's ChatGPT. Built with pure Go, this tool is operating system agnostic and requires no dependencies, making it easy to use across various platforms. With its small build size and streaming completion feature, `chat` offers a smooth chatting experience, even when ChatGPT's frontend is down.
 
@@ -38,6 +38,8 @@ If you already have [go](https://go.dev/) installed:
 ```bash
 go install github.com/stillmatic/chat@latest
 ```
+Make sure your go binary packages are in your `PATH` - eg `export PATH=${PATH}:`go env GOPATH`/bin`.
+
 ### Binary
 You can download binary artifacts from the [releases page](https://github.com/stillmatic/chat/releases) directly. Make sure to move the files to your path.
 
