@@ -38,7 +38,10 @@ If you already have [go](https://go.dev/) installed:
 ```bash
 go install github.com/stillmatic/chat@latest
 ```
-Make sure your go binary packages are in your `PATH` - eg `export PATH=${PATH}:`go env GOPATH`/bin`.
+Make sure your go binary packages are in your `PATH` - eg add the following to `~/.zshrc` or `~/.bashrc`, etc:
+```
+export PATH=${PATH}:`go env GOPATH`/bin
+```
 
 ### Binary
 You can download binary artifacts from the [releases page](https://github.com/stillmatic/chat/releases) directly. Make sure to move the files to your path.
