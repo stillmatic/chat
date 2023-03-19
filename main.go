@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	_ "embed"
 
@@ -14,8 +15,9 @@ import (
 )
 
 type GPTCmd struct {
-	Client   gpt3.Client                        
-	Messages []gpt3.ChatCompletionRequestMessage 
+	Client         gpt3.Client
+	Messages       []gpt3.ChatCompletionRequestMessage
+	currentMessage *strings.Builder
 }
 
 //go:embed prompt.txt
@@ -31,8 +33,10 @@ var assistantPrinter = color.New(color.FgYellow)
 
 // onData handles the streaming output
 // here, we are simply printing the output to the console
-func onData(res *gpt3.ChatCompletionStreamResponse) {
+// and appending it to the current message
+func (c *GPTCmd) onData(res *gpt3.ChatCompletionStreamResponse) {
 	assistantPrinter.Print(res.Choices[0].Delta.Content)
+	c.currentMessage.WriteString(res.Choices[0].Delta.Content)
 }
 
 func (c *GPTCmd) Run(ctx context.Context) error {
@@ -42,41 +46,65 @@ func (c *GPTCmd) Run(ctx context.Context) error {
 		Model:    gpt3.GPT3Dot5Turbo,
 		Messages: c.Messages,
 	}
-	err := c.Client.ChatCompletionStream(ctx, req, onData)
+	c.currentMessage = &strings.Builder{}
+	err := c.Client.ChatCompletionStream(ctx, req, c.onData)
+	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    roleAssistant,
+		Content: c.currentMessage.String(),
+	})
 	if err != nil {
 		return err
 	}
 	fmt.Println("")
 	for {
-		fmt.Print(">  ")
-		buffer := bufio.NewReader(os.Stdin)
-		line, err := buffer.ReadString('\n')
+		shouldContinue, err := c.runSingle(ctx)
 		if err != nil {
 			return err
 		}
-		input := strings.TrimSpace(line)
-		if input == "" {
-			fmt.Println("Please enter a response. (Type 'quit' to exit.)")
-			continue
+		if !shouldContinue {
+			break
 		}
-		if input == "quit" || input == "exit" {
-			print("Thank you, come again!")
-			return nil
-		}
-		c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
-			Role:    roleUser,
-			Content: input,
-		})
-		req := gpt3.ChatCompletionRequest{
-			Model:    gpt3.GPT3Dot5Turbo,
-			Messages: c.Messages,
-		}
-		err = c.Client.ChatCompletionStream(ctx, req, onData)
-		if err != nil {
-			return err
-		}
-		fmt.Println("")
 	}
+	return nil
+}
+
+func (c *GPTCmd) runSingle(ctx context.Context) (shouldContinue bool, err error) {
+	fmt.Print(">  ")
+	buffer := bufio.NewReader(os.Stdin)
+	line, err := buffer.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+	input := strings.TrimSpace(line)
+	if input == "" {
+		fmt.Println("Please enter a response. (Type 'quit' to exit.)")
+		return true, nil
+	}
+	if input == "quit" || input == "exit" {
+		print("Thank you, come again!")
+		return false, nil
+	}
+	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    roleUser,
+		Content: input,
+	})
+	c.currentMessage.Reset()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req := gpt3.ChatCompletionRequest{
+		Model:    gpt3.GPT3Dot5Turbo,
+		Messages: c.Messages,
+	}
+	err = c.Client.ChatCompletionStream(ctx, req, c.onData)
+	if err != nil {
+		return false, err
+	}
+	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+		Role:    roleAssistant,
+		Content: c.currentMessage.String(),
+	})
+	fmt.Println("")
+	return true, nil
 }
 
 func main() {
