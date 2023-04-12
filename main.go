@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	_ "embed"
 
@@ -89,8 +88,6 @@ func (c *GPTCmd) runSingle(ctx context.Context) (shouldContinue bool, err error)
 		Content: input,
 	})
 	c.currentMessage.Reset()
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
 	req := gpt3.ChatCompletionRequest{
 		Model:    gpt3.GPT3Dot5Turbo,
 		Messages: c.Messages,
