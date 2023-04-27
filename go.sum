@@ -1,5 +1,7 @@
 github.com/PullRequestInc/go-gpt3 v1.1.13 h1:VF4FjnTNhjUfD+Rf9+V4zwoAzP4NEaA3Dl65RCsmLDE=
 github.com/PullRequestInc/go-gpt3 v1.1.13/go.mod h1:F9yzAy070LhkqHS2154/IH0HVj5xq5g83gLTj7xzyfw=
+github.com/PullRequestInc/go-gpt3 v1.1.15 h1:pidXZbpqZVW0bp8NBNKDb+/++6PFdYfht9vw2CVpaUs=
+github.com/PullRequestInc/go-gpt3 v1.1.15/go.mod h1:F9yzAy070LhkqHS2154/IH0HVj5xq5g83gLTj7xzyfw=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fatih/color v1.15.0 h1:kOqh6YHBtK8aywxGerMG2Eq3H6Qgoqeo13Bk2Mv/nBs=
