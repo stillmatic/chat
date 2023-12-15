@@ -3,20 +3,43 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
 	_ "embed"
 
-	"github.com/PullRequestInc/go-gpt3"
 	"github.com/fatih/color"
+	"github.com/sashabaranov/go-openai"
 )
 
 type GPTCmd struct {
-	Client         gpt3.Client
-	Messages       []gpt3.ChatCompletionRequestMessage
+	Client         *openai.Client
+	Messages       []openai.ChatCompletionMessage
 	currentMessage *strings.Builder
+	Model          string
+}
+
+type ModelCfg struct {
+	APIKey  string `json:"api_key"`
+	Model   string `json:"model"`
+	BaseURL string `json:"base_url"`
+}
+
+type GPTCmdCfg struct {
+	Configs map[string]ModelCfg `json:"configs"`
+	Active  string              `json:"active"`
+}
+
+// saveConfig saves the GPTCmdCfg struct to a JSON file
+func saveConfig(config GPTCmdCfg, filepath string) error {
+	file, err := json.MarshalIndent(config, "", " ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filepath, file, 0644)
 }
 
 //go:embed prompt.txt
@@ -33,21 +56,34 @@ var assistantPrinter = color.New(color.FgYellow)
 // onData handles the streaming output
 // here, we are simply printing the output to the console
 // and appending it to the current message
-func (c *GPTCmd) onData(res *gpt3.ChatCompletionStreamResponse) {
-	assistantPrinter.Print(res.Choices[0].Delta.Content)
-	c.currentMessage.WriteString(res.Choices[0].Delta.Content)
+func (c *GPTCmd) onData(res *openai.ChatCompletionStream) {
+	for {
+		msg, err := res.Recv()
+		if err != nil {
+			if err.Error() == "EOF" {
+				return
+			}
+			panic(err)
+		}
+		assistantPrinter.Print(msg.Choices[0].Delta.Content)
+		c.currentMessage.WriteString(msg.Choices[0].Delta.Content)
+	}
 }
 
 func (c *GPTCmd) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	req := gpt3.ChatCompletionRequest{
-		Model:    gpt3.GPT3Dot5Turbo,
+	req := openai.ChatCompletionRequest{
+		Model:    c.Model,
 		Messages: c.Messages,
 	}
 	c.currentMessage = &strings.Builder{}
-	err := c.Client.ChatCompletionStream(ctx, req, c.onData)
-	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+	stream, err := c.Client.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		return err
+	}
+	c.onData(stream)
+	c.Messages = append(c.Messages, openai.ChatCompletionMessage{
 		Role:    roleAssistant,
 		Content: c.currentMessage.String(),
 	})
@@ -83,20 +119,21 @@ func (c *GPTCmd) runSingle(ctx context.Context) (shouldContinue bool, err error)
 		print("Thank you, come again!")
 		return false, nil
 	}
-	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+	c.Messages = append(c.Messages, openai.ChatCompletionMessage{
 		Role:    roleUser,
 		Content: input,
 	})
 	c.currentMessage.Reset()
-	req := gpt3.ChatCompletionRequest{
-		Model:    gpt3.GPT3Dot5Turbo,
+	req := openai.ChatCompletionRequest{
+		Model:    c.Model,
 		Messages: c.Messages,
 	}
-	err = c.Client.ChatCompletionStream(ctx, req, c.onData)
+	stream, err := c.Client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		return false, err
 	}
-	c.Messages = append(c.Messages, gpt3.ChatCompletionRequestMessage{
+	c.onData(stream)
+	c.Messages = append(c.Messages, openai.ChatCompletionMessage{
 		Role:    roleAssistant,
 		Content: c.currentMessage.String(),
 	})
@@ -105,10 +142,55 @@ func (c *GPTCmd) runSingle(ctx context.Context) (shouldContinue bool, err error)
 }
 
 func main() {
+	// config path
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	configPath := fmt.Sprintf("%s/.gptcmd.json", homeDir)
+	gptConfig := GPTCmdCfg{
+		Configs: make(map[string]ModelCfg),
+		Active:  "",
+	}
+	//check if config exists
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		//	make config
+		gptConfig.Configs["default"] = ModelCfg{
+			APIKey:  os.Getenv("OPENAI_API_KEY"),
+			Model:   openai.GPT3Dot5Turbo,
+			BaseURL: "https://api.openai.com/v1",
+		}
+		gptConfig.Active = "default"
+		err := saveConfig(gptConfig, configPath)
+		if err != nil {
+			panic(err)
+		}
+	}
+	// load config
+	configFile, err := os.Open(configPath)
+	if err != nil {
+		panic(err)
+	}
+	defer configFile.Close()
+	jsonParser := json.NewDecoder(configFile)
+	err = jsonParser.Decode(&gptConfig)
+	if err != nil {
+		panic(err)
+	}
+	// check if active config exists
+	if _, ok := gptConfig.Configs[gptConfig.Active]; !ok {
+		panic(fmt.Errorf("active config %s does not exist", gptConfig.Active))
+	}
+	// set active config
+	activeConfig := gptConfig.Configs[gptConfig.Active]
+	clientCfg := openai.DefaultConfig(activeConfig.APIKey)
+	clientCfg.BaseURL = activeConfig.BaseURL
+	client := openai.NewClientWithConfig(clientCfg)
+
 	// takes _all_ args as just a string
 	inputs := os.Args[1:]
 	inputStr := strings.Join(inputs, " ")
-	messages := []gpt3.ChatCompletionRequestMessage{
+	messages := []openai.ChatCompletionMessage{
 		{
 			Role:    roleSystem,
 			Content: systemPrompt,
@@ -118,17 +200,17 @@ func main() {
 			Content: inputStr,
 		},
 	}
-	apiKey := os.Getenv("OPENAI_KEY")
+	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		panic("environment variable OPENAI_KEY is not set")
+		panic("environment variable OPENAI_API_KEY is not set")
 	}
-	client := gpt3.NewClient(apiKey)
+
 	gptCmd := &GPTCmd{
 		Client:   client,
 		Messages: messages,
 	}
 	ctx := context.Background()
-	err := gptCmd.Run(ctx)
+	err = gptCmd.Run(ctx)
 	if err != nil {
 		panic(err)
 	}
